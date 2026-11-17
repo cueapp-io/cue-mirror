@@ -37,10 +37,18 @@ function work() {
   return jobs.sort((a, b) => a.at - b.at).slice(0, MAX_PAGES);
 }
 
+/** Per-site index: requested path → mirror file, so the worker can map a live URL to a mirrored file. */
+function index(id) {
+  const file = path.join('mirror', id, 'index.json');
+  let map = {};
+  try { map = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {}
+  return new Proxy(map, { set(t, k, v) { t[k] = v; fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(t)); return true; } });
+}
+
 function prune() {
   for (const id of fs.existsSync('mirror') ? fs.readdirSync('mirror') : []) {
     const dir = path.join('mirror', id);
-    const files = fs.readdirSync(dir).map(f => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs })).sort((a, b) => b.t - a.t).slice(MAX_FILES);
+    const files = fs.readdirSync(dir).filter(f => f !== 'index.json').map(f => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs })).sort((a, b) => b.t - a.t).slice(MAX_FILES);
     for (const { f } of files) fs.unlinkSync(path.join(dir, f));
   }
 }
@@ -61,7 +69,9 @@ function prune() {
       const html = await page.content();
       const links = (html.match(/\/video\.php|\/watch\/|\/series\/|\/movie\//g) || []).length;
       fs.mkdirSync(path.dirname(job.file), { recursive: true });
-      fs.writeFileSync(job.file, JSON.stringify({ site: job.site.id, url: job.url, at: Date.now(), title: await page.title(), links, html }));
+      const entry = { site: job.site.id, url: job.url, at: Date.now(), title: await page.title(), links, html };
+      fs.writeFileSync(job.file, JSON.stringify(entry));
+      index(job.site.id)[new URL(job.url).pathname + new URL(job.url).search] = { f: path.basename(job.file), at: entry.at, links, title: entry.title };
       console.log(`${job.site.id} ${job.q} links=${links} bytes=${html.length}`);
       if (links) ok++;
     } catch (e) { console.log(`${job.site.id} ${job.q} FAILED ${e.message.slice(0, 80)}`); }
