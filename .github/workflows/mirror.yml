@@ -1,23 +1,32 @@
 name: mirror
+# Public repo → standard-runner minutes are unmetered; guardrails below keep each run short anyway.
 on:
   workflow_dispatch:
-  schedule: [{ cron: "*/20 * * * *" }]
-concurrency: { group: mirror, cancel-in-progress: false }
+  schedule: [{ cron: "*/25 * * * *" }]   # GitHub floor is 5 min and it runs late; 25 is plenty
+concurrency: { group: mirror, cancel-in-progress: false }   # never two renderers at once
 permissions: { contents: write }
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12                 # hard stop well under any allowance
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm i --no-audit --no-fund playwright@1.49.0 && npx playwright install --with-deps chromium
+        with: { node-version: 22, cache: npm, cache-dependency-path: package.json }
+      - name: cache chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-1.49.0
+      - run: npm i --no-audit --no-fund playwright@1.49.0
+      - run: npx playwright install --with-deps chromium
       - run: node probe.js
+        env: { FRESH_MIN: "45", MAX_PAGES: "6", MAX_FILES: "300" }
       - name: commit
         run: |
           git config user.name "cue mirror"
           git config user.email "mirror@cueapp.io"
           git add -A mirror
-          git diff --cached --quiet || git commit -m "mirror $(date -u +%FT%TZ)"
+          git diff --cached --quiet && echo "no change" && exit 0
+          git commit -m "mirror $(date -u +%FT%TZ)"
           git push
