@@ -13,10 +13,20 @@ const MAX_PAGES = Number(process.env.MAX_PAGES || 6);
 const MAX_FILES = Number(process.env.MAX_FILES || 300);
 const sha = s => crypto.createHash('sha1').update(s).digest('hex').slice(0, 16);
 
+const CHALLENGE = /just a moment|attention required|checking your browser|لحظة|تحقق/i;
 async function solve(page, url) {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-  for (let i = 0; i < 25; i++) {
-    if (!/just a moment|attention required|checking your browser/i.test(await page.title())) return;
+  for (let i = 0; i < 40; i++) {
+    // a visible Turnstile checkbox sometimes has to be clicked before it clears itself
+    for (const frame of page.frames()) {
+      if (!/challenges\.cloudflare\.com/.test(frame.url())) continue;
+      try {
+        const box = frame.locator('input[type=checkbox], .mark, #challenge-stage');
+        if (await box.count()) { await box.first().click({ timeout: 1500 }).catch(() => {}); }
+      } catch (e) {}
+    }
+    const html = await page.content();
+    if (!CHALLENGE.test(await page.title()) && /\/video\.php|\/watch\/|\/series\/|\/movie\/|\/film\//.test(html)) return;
     await page.waitForTimeout(1500);
   }
 }
@@ -57,7 +67,7 @@ function prune() {
   const jobs = work();
   if (!jobs.length) { console.log('queue fresh — nothing to do'); return; }
   console.log('rendering ' + jobs.length + ' page(s)');
-  const browser = await chromium.launch({ args: ['--disable-blink-features=AutomationControlled'] });
+  const browser = await chromium.launch({ headless: false, args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'] });
   const ctx = await browser.newContext({ userAgent: UA, locale: 'ar-EG', viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   let ok = 0;

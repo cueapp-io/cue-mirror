@@ -19,8 +19,9 @@ jobs:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-1.49.0
       - run: npm i --no-audit --no-fund playwright@1.49.0
-      - run: npx playwright install --with-deps chromium
-      - run: node probe.js
+      - run: npx playwright install --with-deps chromium xvfb
+      - run: sudo apt-get install -y xvfb
+      - run: xvfb-run -a --server-args='-screen 0 1280x900x24' node probe.js
         env: { FRESH_MIN: "45", MAX_PAGES: "6", MAX_FILES: "300" }
       - name: commit
         run: |
