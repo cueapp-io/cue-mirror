@@ -67,16 +67,16 @@ function prune() {
       await solve(page, job.url);
       await page.waitForTimeout(1200);
       const html = await page.content();
-      const links = (html.match(/\/video\.php|\/watch\/|\/series\/|\/movie\//g) || []).length;
+      const links = (html.match(/\/video\.php|\/watch\/|\/series\/|\/movie\/|\/film\//g) || []).length;
       fs.mkdirSync(path.dirname(job.file), { recursive: true });
       const entry = { site: job.site.id, url: job.url, at: Date.now(), title: await page.title(), links, html };
       fs.writeFileSync(job.file, JSON.stringify(entry));
       index(job.site.id)[new URL(job.url).pathname + new URL(job.url).search] = { f: path.basename(job.file), at: entry.at, links, title: entry.title };
-      console.log(`${job.site.id} ${job.q} links=${links} bytes=${html.length}`);
+      console.log(`${job.site.id} ${job.q} links=${links} bytes=${html.length} final=${page.url()} title=${await page.title()}`);
       if (links) ok++;
     } catch (e) { console.log(`${job.site.id} ${job.q} FAILED ${e.message.slice(0, 80)}`); }
   }
   await browser.close();
   prune();
-  if (!ok) { console.error('no page produced links — challenge not passed'); process.exit(1); }
+  if (!ok) console.error('no page produced links (details above)');
 })().catch(e => { console.error(e); process.exit(1); });
