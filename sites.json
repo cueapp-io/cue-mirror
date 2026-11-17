@@ -1,6 +1,6 @@
 {
   "sites": [
     { "id": "wecima", "root": "https://wecima.cx", "search": "/search?q=", "queries": ["batman"] },
-    { "id": "egydead", "root": "https://www.egydead.beer", "search": "/?s=", "queries": ["batman"] }
+    { "id": "egydead", "root": "https://a1.egydead.media", "search": "/?s=", "queries": ["batman"] }
   ]
 }

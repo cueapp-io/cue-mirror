@@ -38,9 +38,10 @@ function work() {
     for (const q of site.queries) {
       const url = site.root + site.search + encodeURIComponent(q);
       const file = path.join('mirror', site.id, sha(url) + '.json');
-      let at = 0;
-      try { at = JSON.parse(fs.readFileSync(file, 'utf8')).at || 0; } catch (e) {}
-      if (Date.now() - at < FRESH_MIN * 60000) continue;
+      let at = 0, links = 0;
+      try { const prev = JSON.parse(fs.readFileSync(file, 'utf8')); at = prev.at || 0; links = prev.links || 0; } catch (e) {}
+      // a page that produced no links last time is retried immediately, not after the fresh window
+      if (links > 0 && Date.now() - at < FRESH_MIN * 60000) continue;
       jobs.push({ site, q, url, file, at });
     }
   }
