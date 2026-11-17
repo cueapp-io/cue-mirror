@@ -5,7 +5,13 @@
 //  • a run stops early once it has produced MAX_PAGES fresh pages
 //  • mirror files are pruned to MAX_FILES per site, so the repo cannot grow without bound
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
-const { chromium } = require('playwright');
+const { chromium: playwrightChromium } = require('playwright');
+let chromium = playwrightChromium;
+try { // stealth patching (webdriver flag, chrome runtime, plugins) — Cloudflare checks these first
+  const { addExtra } = require('playwright-extra');
+  const stealth = require('puppeteer-extra-plugin-stealth')();
+  chromium = addExtra(playwrightChromium); chromium.use(stealth);
+} catch (e) { console.log('stealth plugin unavailable, plain chromium'); }
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const FRESH_MIN = Number(process.env.FRESH_MIN || 45);

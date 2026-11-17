@@ -18,7 +18,7 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-1.49.0
-      - run: npm i --no-audit --no-fund playwright@1.49.0
+      - run: npm i --no-audit --no-fund playwright@1.49.0 playwright-extra puppeteer-extra-plugin-stealth
       - run: npx playwright install --with-deps chromium
       - run: sudo apt-get install -y --no-install-recommends xvfb
       - run: xvfb-run -a --server-args='-screen 0 1280x900x24' node probe.js
